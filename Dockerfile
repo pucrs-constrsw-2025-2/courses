@@ -10,8 +10,8 @@ COPY requirements.txt requirements.txt
 # 4. Instale as dependências
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
-# 5. Copie o resto do código da sua aplicação para o diretório de trabalho
-COPY . .
+# 5. Copie o conteúdo da pasta src para o diretório de trabalho
+COPY ./src .
 
 # 6. Exponha a porta que a aplicação vai rodar dentro do contêiner
 EXPOSE 8000
