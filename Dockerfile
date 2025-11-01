@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 COPY ./src .
 
 # 6. Exponha a porta que a aplicação vai rodar dentro do contêiner
-EXPOSE 8000
+EXPOSE 8080
 
 # 7. Defina o comando para iniciar a aplicação quando o contêiner for executado
 # O host 0.0.0.0 é crucial para que a aplicação seja acessível de fora do contêiner
