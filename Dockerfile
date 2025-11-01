@@ -18,4 +18,4 @@ EXPOSE 8000
 
 # 7. Defina o comando para iniciar a aplicação quando o contêiner for executado
 # O host 0.0.0.0 é crucial para que a aplicação seja acessível de fora do contêiner
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
