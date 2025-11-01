@@ -5,3 +5,8 @@ pydantic[email]
 pydantic-settings
 python-dotenv
 httpx
+pytest
+pytest-asyncio
+respx
+pytest-mock
+pytest-cov
