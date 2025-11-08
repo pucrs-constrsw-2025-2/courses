@@ -3,12 +3,17 @@ import uuid
 from unittest.mock import AsyncMock, patch, MagicMock, Mock
 
 import pytest
-from fastapi import status
+from fastapi import status, Depends
 from fastapi.testclient import TestClient
 from httpx import AsyncClient, ASGITransport
 
 from routers import router, fetch_classes_from_api
 from models import CourseCreate, MaterialBase, Modality, ClassDTO
+from security import validate_token
+
+# Mock para o validate_token
+async def mock_validate_token():
+    return {"sub": "test_user", "roles": ["professor"]}
 
 
 @pytest.fixture
@@ -20,8 +25,9 @@ def anyio_backend():
 def app():
     # Build a minimal FastAPI app to include the router for testing
     from fastapi import FastAPI
-
+    
     app = FastAPI()
+    app.dependency_overrides[validate_token] = mock_validate_token
     app.include_router(router)
     return app
 
