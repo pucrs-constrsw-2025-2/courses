@@ -2,51 +2,68 @@ import pytest
 import pytest_asyncio
 import httpx
 import respx
+import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
+from httpx import ASGITransport
 
-from src.main import app
-from src.database import db, course_collection
+from main import app
+from database import db, course_collection
 
-# Usamos um nome de banco de dados diferente para os testes
+# --- Configuração do Banco de Dados de Teste ---
+
 TEST_DB_NAME = "courses_test"
-MONGO_URI = "mongodb://mongodb:27017"
+MONGO_URI = "mongodb://mongodb:27017" # Assume que a pipeline terá um Mongo
 
-test_client = AsyncIOMotorClient(MONGO_URI)
-test_db = test_client[TEST_DB_NAME]
-test_collection = test_db["courses"]
+# 1. REMOVIDO o event_loop e db_client fixtures. 
+#    Vamos criar o cliente dentro da 'test_collection' 
+#    para garantir que o loop de eventos seja gerenciado corretamente.
 
-# Função para limpar o banco de dados após cada teste
-@pytest_asyncio.fixture(scope="function", autouse=True)
-async def clear_test_database():
-    await test_collection.delete_many({})
-    yield
-    await test_collection.delete_many({})
+@pytest_asyncio.fixture(scope="function")
+async def test_collection():
+    """
+    Fixture que cria um cliente de banco de dados para CADA TESTE,
+    fornece a coleção, e limpa tudo no final.
+    Isso garante 100% de isolamento do loop de eventos.
+    """
+    client = AsyncIOMotorClient(MONGO_URI)
+    db_test = client[TEST_DB_NAME]
+    collection_test = db_test["courses"]
+    
+    await collection_test.delete_many({})  # Limpa antes
+    yield collection_test  # Fornece a coleção para o teste
+    await collection_test.delete_many({})  # Limpa depois
+    
+    client.close() # Fecha o cliente deste teste
 
 # --- Configuração do Cliente da API ---
 
 @pytest_asyncio.fixture(scope="function")
-async def async_client():
+async def async_client(test_collection): # Depende da coleção limpa
     """
-    Cria um cliente de teste assíncrono para fazer chamadas à API.
+    Cria um cliente de teste assíncrono para os testes de integração.
     """
     # Substitui o banco de dados da aplicação pelo banco de testes
-    app.dependency_overrides[db] = lambda: test_db
+    app.dependency_overrides[db] = lambda: test_collection.database
     app.dependency_overrides[course_collection] = lambda: test_collection
-
-    async with httpx.AsyncClient(app=app, base_url="http://test") as client:
+    
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         yield client
 
     # Limpa a substituição depois do teste
     app.dependency_overrides = {}
-    
+
+
+# --- Mock do OAuth ---
+
 @pytest.fixture
 def respx_mock():
     """
     Mocka a rota de validação do OAuth.
     """
-    oauth_url = "http://oauth:8000/validate"
+    oauth_url = "http://oauth:8000/validate" 
     
-    # Mocka a rota POST /validate
     respx.post(oauth_url).mock(
         return_value=httpx.Response(
             status_code=200,

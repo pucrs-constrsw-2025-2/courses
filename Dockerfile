@@ -16,10 +16,10 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 # 6. Copie o conteúdo da pasta src para o diretório de trabalho
 COPY ./src .
 COPY ./tests ./tests
+COPY pytest.ini .
 
 # 7. Exponha a porta que a aplicação vai rodar
 EXPOSE 8080
 
 # 8. Defina o comando para iniciar a aplicação
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
-

@@ -5,7 +5,7 @@ import httpx
 
 from database import course_collection
 from models import (
-    CourseBase,
+    CourseBase, 
     CourseInDB, 
     CourseUpdate, 
     Material, 
@@ -18,6 +18,24 @@ from config import settings
 from security import validate_token
 
 router = APIRouter()
+
+# ---
+# FUNÇÃO HELPER (AUXILIAR)
+# ---
+async def _get_course_or_404(id: str) -> dict:
+    """
+    Função auxiliar interna para buscar um curso no banco de dados.
+    Lança 400 se o ID for inválido ou 404 se não for encontrado.
+    """
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail=f"Invalid ID: {id}")
+    
+    course = await course_collection.find_one({"_id": ObjectId(id)})
+    
+    if course is None:
+        raise HTTPException(status_code=404, detail=f"Course with ID {id} not found")
+    
+    return course
 
 # === Helper para chamada à API externa ===
 async def fetch_classes_from_api(class_ids: List[str], semester: Optional[int], year: Optional[int]) -> List[ClassDTO]:
@@ -32,13 +50,11 @@ async def fetch_classes_from_api(class_ids: List[str], semester: Optional[int], 
         
     async with httpx.AsyncClient() as client:
         try:
-            # Assumindo que a API externa tem um endpoint /classes/by-ids
             url = f"{settings.CLASSES_API_BASE_URL}/classes/by-ids"
             response = await client.get(url, params=params)
             response.raise_for_status()
             return [ClassDTO(**item) for item in response.json()]
         except (httpx.RequestError, httpx.HTTPStatusError) as e:
-            # Em um app real, seria bom ter um log aqui
             print(f"Error fetching classes: {e}")
             return []
 
@@ -46,8 +62,8 @@ async def fetch_classes_from_api(class_ids: List[str], semester: Optional[int], 
 # === Course Endpoints ===
 @router.post("/courses", response_model=CourseInDB, status_code=status.HTTP_201_CREATED)
 async def create_course(
-    course: CourseBase, # <-- Alterado para CourseBase (regra de negócio)
-    token_data: dict = Depends(validate_token) # <-- Guarda de segurança
+    course: CourseBase,
+    token_data: dict = Depends(validate_token)
 ):
     """Cria um novo curso."""
     course_dict = course.model_dump()
@@ -59,7 +75,7 @@ async def create_course(
 async def list_courses(
     name: Optional[str] = None, 
     modality: Optional[Modality] = None,
-    token_data: dict = Depends(validate_token) # <-- Guarda de segurança
+    token_data: dict = Depends(validate_token)
 ):
     """Lista cursos, com filtros opcionais por nome ou modalidade."""
     query = {}
@@ -74,30 +90,26 @@ async def list_courses(
 @router.get("/courses/{id}", response_model=CourseInDB)
 async def get_course(
     id: str,
-    token_data: dict = Depends(validate_token) # <-- Guarda de segurança
+    token_data: dict = Depends(validate_token)
 ):
     """Busca um curso pelo seu ID."""
-    if not ObjectId.is_valid(id):
-        raise HTTPException(status_code=400, detail=f"Invalid ID: {id}")
-    course = await course_collection.find_one({"_id": ObjectId(id)})
-    if course is None:
-        raise HTTPException(status_code=404, detail=f"Course with ID {id} not found")
-    return course
+    return await _get_course_or_404(id)
 
 @router.put("/courses/{id}", response_model=CourseInDB)
 async def update_course(
     id: str, 
-    course: CourseBase, # <-- Alterado para CourseBase (regra de negócio)
-    token_data: dict = Depends(validate_token) # <-- Guarda de segurança
+    course: CourseBase,
+    token_data: dict = Depends(validate_token)
 ):
-    """Atualiza um curso completely (substituição)."""
-    if not ObjectId.is_valid(id):
-        raise HTTPException(status_code=400, detail=f"Invalid ID: {id}")
+    """Atualiza um curso completamente (substituição)."""
+    await _get_course_or_404(id) # Verifica se existe
     
     update_result = await course_collection.replace_one({"_id": ObjectId(id)}, course.model_dump())
-    if update_result.matched_count == 0:
-        raise HTTPException(status_code=404, detail=f"Course with ID {id} not found")
     
+    # Verifica se o replace_one realmente encontrou e atualizou o documento
+    if update_result.matched_count == 0:
+        raise HTTPException(status_code=404, detail=f"Course with ID {id} not found during update")
+
     updated_course = await course_collection.find_one({"_id": ObjectId(id)})
     return updated_course
 
@@ -105,21 +117,18 @@ async def update_course(
 async def partial_update_course(
     id: str, 
     course: CourseUpdate,
-    token_data: dict = Depends(validate_token) # <-- Guarda de segurança
+    token_data: dict = Depends(validate_token)
 ):
     """Atualiza parcialmente um curso."""
-    if not ObjectId.is_valid(id):
-        raise HTTPException(status_code=400, detail=f"Invalid ID: {id}")
+    await _get_course_or_404(id) # Verifica se existe
         
     update_data = course.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
-    update_result = await course_collection.update_one(
+    await course_collection.update_one(
         {"_id": ObjectId(id)}, {"$set": update_data}
     )
-    if update_result.matched_count == 0:
-        raise HTTPException(status_code=404, detail=f"Course with ID {id} not found")
     
     updated_course = await course_collection.find_one({"_id": ObjectId(id)})
     return updated_course
@@ -127,46 +136,41 @@ async def partial_update_course(
 @router.delete("/courses/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_course(
     id: str,
-    token_data: dict = Depends(validate_token) # <-- Guarda de segurança
+    token_data: dict = Depends(validate_token)
 ):
     """Deleta um curso."""
-    if not ObjectId.is_valid(id):
-        raise HTTPException(status_code=400, detail=f"Invalid ID: {id}")
-    delete_result = await course_collection.delete_one({"_id": ObjectId(id)})
-    if delete_result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail=f"Course with ID {id} not found")
+    await _get_course_or_404(id) # Verifica se existe
+    await course_collection.delete_one({"_id": ObjectId(id)})
+    return
 
 # === Material Sub-resource Endpoints ===
 @router.post("/courses/{id}/materials", response_model=Material, status_code=status.HTTP_201_CREATED)
 async def add_material_to_course(
     id: str, 
     material: MaterialBase,
-    token_data: dict = Depends(validate_token) # <-- Guarda de segurança
+    token_data: dict = Depends(validate_token)
 ):
     """Adiciona um novo material a um curso."""
+    await _get_course_or_404(id) # Verifica se o curso existe
+    
     new_material = Material(**material.model_dump())
-
-    # Converte o objeto do material para um dicionário pronto para o MongoDB
     material_dict = new_material.model_dump()
-    material_dict['url'] = str(material_dict['url']) # CONVERTE A URL PARA STRING
+    material_dict['url'] = str(material_dict['url'])
 
-    update_result = await course_collection.update_one(
+    await course_collection.update_one(
         {"_id": ObjectId(id)},
-        {"$push": {"materials": material_dict}} # USA O DICIONÁRIO CORRIGIDO
+        {"$push": {"materials": material_dict}}
     )
-    if update_result.matched_count == 0:
-        raise HTTPException(status_code=404, detail=f"Course with ID {id} not found")
     return new_material
 
 @router.get("/courses/{id}/materials", response_model=List[Material])
 async def get_materials_from_course(
     id: str, 
     name: Optional[str] = None,
-    token_data: dict = Depends(validate_token) # <-- Guarda de segurança
+    token_data: dict = Depends(validate_token)
 ):
     """Lista os materiais de um curso, com filtro opcional por nome."""
-    # Chamada interna agora passa o token_data
-    course = await get_course(id, token_data) 
+    course = await _get_course_or_404(id) 
     materials = course.get("materials", [])
     if name:
         return [m for m in materials if name.lower() in m["name"].lower()]
@@ -176,12 +180,10 @@ async def get_materials_from_course(
 async def get_material_from_course(
     id: str, 
     material_id: str,
-    token_data: dict = Depends(validate_token) # <-- Guarda de segurança
+    token_data: dict = Depends(validate_token)
 ):
     """Busca um material específico de um curso."""
-    # Chamada interna agora passa o token_data
-    course = await get_course(id, token_data)
-    # Adicionada verificação .get() para segurança
+    course = await _get_course_or_404(id)
     for material in course.get("materials", []): 
         if material["id"] == material_id:
             return material
@@ -192,7 +194,7 @@ async def update_material_in_course(
     id: str, 
     material_id: str, 
     material: MaterialBase,
-    token_data: dict = Depends(validate_token) # <-- Guarda de segurança
+    token_data: dict = Depends(validate_token)
 ):
     """Atualiza um material de um curso completamente."""
     update_result = await course_collection.update_one(
@@ -201,21 +203,26 @@ async def update_material_in_course(
     )
     if update_result.matched_count == 0:
         raise HTTPException(status_code=404, detail=f"Material or Course not found")
-    return Material(id=material_id, **material.model_dump())
+    
+    course = await _get_course_or_404(id)
+    for mat in course.get("materials", []):
+        if mat["id"] == material_id:
+            return mat
+    
+    raise HTTPException(status_code=404, detail="Material not found after update")
 
 @router.patch("/courses/{id}/materials/{material_id}", response_model=Material)
 async def partial_update_material_in_course(
     id: str, 
     material_id: str, 
     material: MaterialUpdate,
-    token_data: dict = Depends(validate_token) # <-- Guarda de segurança
+    token_data: dict = Depends(validate_token)
 ):
     """Atualiza um material de um curso parcialmente."""
     update_data = material.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
-    # SE a url estiver sendo atualizada, converta-a para string
     if 'url' in update_data and update_data['url'] is not None:
         update_data['url'] = str(update_data['url'])
 
@@ -228,24 +235,29 @@ async def partial_update_material_in_course(
     if update_result.matched_count == 0:
         raise HTTPException(status_code=404, detail=f"Material or Course not found")
     
-    # Retorna o estado atualizado
-    # Chamada interna agora passa o token_data
-    return await get_material_from_course(id, material_id, token_data)
+    course = await _get_course_or_404(id)
+    for mat in course.get("materials", []):
+        if mat["id"] == material_id:
+            return mat
+
+    raise HTTPException(status_code=404, detail="Material not found after update")
 
 
 @router.delete("/courses/{id}/materials/{material_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_material_from_course(
     id: str, 
     material_id: str,
-    token_data: dict = Depends(validate_token) # <-- Guarda de segurança
+    token_data: dict = Depends(validate_token)
 ):
     """Deleta um material de um curso."""
+    await _get_course_or_404(id) # Verifica se o curso existe
+    
     update_result = await course_collection.update_one(
         {"_id": ObjectId(id)},
         {"$pull": {"materials": {"id": material_id}}}
     )
     if update_result.modified_count == 0:
-        raise HTTPException(status_code=404, detail=f"Material or Course not found")
+        raise HTTPException(status_code=404, detail=f"Material with ID {material_id} not found")
 
 # === Class Sub-resource Endpoints ===
 
@@ -254,11 +266,10 @@ async def get_classes_from_course(
     id: str, 
     semester: Optional[int] = Query(None), 
     year: Optional[int] = Query(None),
-    token_data: dict = Depends(validate_token) # <-- Guarda de segurança
+    token_data: dict = Depends(validate_token)
 ):
     """Busca as turmas de um curso, consultando uma API externa e aplicando filtros."""
-    # Chamada interna agora passa o token_data
-    course = await get_course(id, token_data)
+    course = await _get_course_or_404(id)
     class_ids = course.get("classes", [])
     
     # Chama o serviço externo para obter detalhes das turmas

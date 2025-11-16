@@ -40,7 +40,7 @@ def client(app):
 def make_course_doc(name="Test Course", modality=Modality.PRESENTIAL, credits=3):
     # produce a 24-char hex string so it is valid as a MongoDB ObjectId
     return {
-        "_id": uuid.uuid4().hex[:24],  # 24 hex chars to emulate ObjectId string
+        "_id": uuid.uuid4().hex[:24],
         "name": name,
         "credits": credits,
         "modality": modality.value,
@@ -74,10 +74,13 @@ async def test_create_and_get_course(app):
             assert resp.status_code == status.HTTP_201_CREATED
             assert resp.json()["name"] == course_doc["name"]
 
-            # Get by id (note: routers.get_course expects a valid ObjectId; we bypass validation by patching ObjectId.is_valid)
             with patch("routers.ObjectId") as oid:
                 oid.is_valid.return_value = True
                 oid.return_value = created_id
+                
+                # CORREÇÃO: Mockar o find_one para a função _get_course_or_404
+                coll.find_one = AsyncMock(return_value=course_doc)
+                
                 resp2 = await ac.get(f"/courses/{created_id}")
                 assert resp2.status_code == status.HTTP_200_OK
                 assert resp2.json()["name"] == course_doc["name"]
@@ -88,7 +91,6 @@ async def test_list_courses_filters(app):
     docs = [make_course_doc(name="Math"), make_course_doc(name="Physics", modality=Modality.ONLINE)]
     with patch("routers.course_collection") as coll:
         coll.find = Mock()
-        # to_list should return the docs
         coll.find.return_value.to_list = AsyncMock(return_value=docs)
 
         async with AsyncClient(base_url="http://test", transport=ASGITransport(app=app)) as ac:
@@ -105,10 +107,13 @@ async def test_update_course_not_found(app):
     course_doc = make_course_doc()
     with patch("routers.ObjectId") as oid, patch("routers.course_collection") as coll:
         oid.is_valid.return_value = True
+        
+        # CORREÇÃO: Mockar o find_one para a função _get_course_or_404
+        # Ele deve falhar na segunda chamada (replace_one)
+        coll.find_one = AsyncMock(return_value=course_doc)
         coll.replace_one = AsyncMock(return_value=AsyncMock(matched_count=0))
 
         async with AsyncClient(base_url="http://test", transport=ASGITransport(app=app)) as ac:
-            # Use a valid name (min_length=3) so request reaches the handler and returns 404 from DB mock
             payload = {"name": "New Course", "credits": 1, "modality": "PRESENTIAL"}
             r = await ac.put(f"/courses/{course_doc['_id']}", json=payload)
             assert r.status_code == 404
@@ -117,8 +122,12 @@ async def test_update_course_not_found(app):
 @pytest.mark.asyncio
 async def test_partial_update_no_fields(app):
     course_doc = make_course_doc()
-    with patch("routers.ObjectId") as oid:
+    with patch("routers.ObjectId") as oid, patch("routers.course_collection") as coll:
         oid.is_valid.return_value = True
+        
+        # CORREÇÃO: Mockar o find_one para a função _get_course_or_404
+        coll.find_one = AsyncMock(return_value=course_doc)
+        
         async with AsyncClient(base_url="http://test", transport=ASGITransport(app=app)) as ac:
             r = await ac.patch(f"/courses/{course_doc['_id']}", json={})
             assert r.status_code == 400
@@ -136,7 +145,8 @@ async def test_material_lifecycle(app):
     course_doc = make_course_doc()
     course_doc["materials"] = []
 
-    with patch("routers.get_course", AsyncMock(return_value=course_doc)):
+    # CORREÇÃO: Mockar a função helper _get_course_or_404 que é chamada por add_material_to_course
+    with patch("routers._get_course_or_404", AsyncMock(return_value=course_doc)):
         with patch("routers.course_collection") as coll:
             coll.update_one = AsyncMock(return_value=AsyncMock(matched_count=1))
             async with AsyncClient(base_url="http://test", transport=ASGITransport(app=app)) as ac:
@@ -155,7 +165,8 @@ async def test_material_lifecycle(app):
 async def test_get_material_not_found(app):
     course_doc = make_course_doc()
     course_doc["materials"] = []
-    with patch("routers.get_course", AsyncMock(return_value=course_doc)):
+    # CORREÇÃO: Mockar a função helper _get_course_or_404
+    with patch("routers._get_course_or_404", AsyncMock(return_value=course_doc)):
         async with AsyncClient(base_url="http://test", transport=ASGITransport(app=app)) as ac:
             r = await ac.get(f"/courses/{course_doc['_id']}/materials/nonexistent")
             assert r.status_code == 404
@@ -164,7 +175,7 @@ async def test_get_material_not_found(app):
 @pytest.mark.asyncio
 async def test_update_material_missing(app):
     course_doc = make_course_doc()
-    with patch("routers.course_collection") as coll:
+    with patch("routers.course_collection") as coll, patch("routers._get_course_or_404", AsyncMock(return_value=course_doc)):
         coll.update_one = AsyncMock(return_value=AsyncMock(matched_count=0))
         async with AsyncClient(base_url="http://test", transport=ASGITransport(app=app)) as ac:
             payload = {"name": "New", "url": "http://x"}
@@ -185,7 +196,8 @@ async def test_partial_update_material_no_fields(app):
 @pytest.mark.asyncio
 async def test_delete_material_not_found(app):
     course_doc = make_course_doc()
-    with patch("routers.course_collection") as coll:
+    # CORREÇÃO: Mockar a função helper _get_course_or_404
+    with patch("routers.course_collection") as coll, patch("routers._get_course_or_404", AsyncMock(return_value=course_doc)):
         coll.update_one = AsyncMock(return_value=AsyncMock(modified_count=0))
         async with AsyncClient(base_url="http://test", transport=ASGITransport(app=app)) as ac:
             r = await ac.delete(f"/courses/{course_doc['_id']}/materials/mid")
