@@ -6,7 +6,7 @@ from config import settings
 bearer_scheme = HTTPBearer()
 
 # URL interna para o serviço de validação do OAuth
-OAUTH_VALIDATE_URL = f"http://{settings.OAUTH_INTERNAL_HOST}:{settings.OAUTH_INTERNAL_API_PORT}/validate"
+OAUTH_VALIDATE_URL = f"http://{settings.OAUTH_INTERNAL_HOST}:{settings.OAUTH_INTERNAL_API_PORT}/api/v1/validate"
 
 async def validate_token(creds: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     """
