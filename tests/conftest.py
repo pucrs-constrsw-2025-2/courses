@@ -14,10 +14,6 @@ from database import db, course_collection
 TEST_DB_NAME = "courses_test"
 MONGO_URI = "mongodb://mongodb:27017" # Assume que a pipeline terá um Mongo
 
-# 1. REMOVIDO o event_loop e db_client fixtures. 
-#    Vamos criar o cliente dentro da 'test_collection' 
-#    para garantir que o loop de eventos seja gerenciado corretamente.
-
 @pytest_asyncio.fixture(scope="function")
 async def test_collection():
     """
@@ -32,8 +28,7 @@ async def test_collection():
     await collection_test.delete_many({})  # Limpa antes
     yield collection_test  # Fornece a coleção para o teste
     await collection_test.delete_many({})  # Limpa depois
-    
-    client.close() # Fecha o cliente deste teste
+    client.close()
 
 # --- Configuração do Cliente da API ---
 
@@ -62,7 +57,7 @@ def respx_mock():
     """
     Mocka a rota de validação do OAuth.
     """
-    oauth_url = "http://oauth:8000/validate" 
+    oauth_url = "http://oauth:8000/api/v1/validate" 
     
     respx.post(oauth_url).mock(
         return_value=httpx.Response(
