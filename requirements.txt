@@ -16,3 +16,4 @@ pytest-asyncio
 respx
 pytest-mock
 pytest-cov
+debugpy
