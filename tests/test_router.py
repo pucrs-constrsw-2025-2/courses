@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient, ASGITransport
 
 from routers import router, fetch_classes_from_api
-from models import CourseCreate, MaterialBase, Modality, ClassDTO
+from models import CourseCreate, MaterialBase, Modality, ClassDTO, CourseBase
 from security import validate_token
 
 # Mock para o validate_token

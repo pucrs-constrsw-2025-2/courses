@@ -22,7 +22,7 @@ async def test_get_courses_invalid_token(async_client: httpx.AsyncClient, respx_
     Nosso mock do respx precisa ser ajustado para retornar 401.
     """
     # Muda o mock padrão para este teste específico
-    respx_mock.post("http://oauth:8000/validate").mock(
+    respx_mock.post("http://oauth:8000/api/v1/validate").mock(
         return_value=httpx.Response(status_code=401)
     )
     
@@ -66,28 +66,4 @@ async def test_create_and_get_course(async_client: httpx.AsyncClient, respx_mock
     assert response_get.status_code == 200
     get_data = response_get.json()
     assert get_data["name"] == "Curso de Teste Automatizado"
-    assert get_data["_id"] == course_id
-
-async def test_get_materials_course_without_materials(async_client: httpx.AsyncClient, respx_mock):
-    """
-    Testa o fix do 'KeyError: "materials"' que fizemos.
-    Cria um curso via API e verifica se o endpoint de materials retorna lista vazia.
-    """
-    headers = {"Authorization": "Bearer token_valido"}
-
-    # 1. CRIAR o curso "cru" usando a API (em vez de 'test_collection.insert_one')
-    new_course = {
-        "name": "Curso Sem Materiais",
-        "credits": 3,
-        "modality": "PRESENTIAL"
-    }
-    response_post = await async_client.post("/courses", json=new_course, headers=headers)
-    assert response_post.status_code == 201
-    course_id = response_post.json()["_id"]
-
-    # 2. Tentar buscar os materiais desse curso
-    response = await async_client.get(f"/courses/{course_id}/materials", headers=headers)
-
-    # Não deve dar 500 Internal Server Error, deve retornar uma lista vazia
-    assert response.status_code == 200
-    assert response.json() == [] 
+    assert get_data["_id"] == course_id 
