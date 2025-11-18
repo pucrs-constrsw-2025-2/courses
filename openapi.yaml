@@ -1,0 +1,564 @@
+openapi: 3.1.0
+info:
+  title: ConstrSW - Courses API
+  description: API para gerenciamento de disciplinas e materiais
+  version: 1.0.0
+servers:
+  - url: http://localhost:8183
+    description: Servidor de desenvolvimento (externo)
+  - url: http://courses:8080
+    description: Servidor interno (Docker)
+
+tags:
+  - name: Courses
+    description: Gerenciamento de disciplinas
+  - name: Materials
+    description: Gerenciamento de materiais
+
+paths:
+  /api/v1/courses:
+    post:
+      tags:
+        - Courses
+      summary: Criar uma nova disciplina
+      operationId: createCourse
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseCreateRequest'
+      responses:
+        '201':
+          description: Disciplina criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      tags:
+        - Courses
+      summary: Listar disciplinas
+      operationId: listCourses
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: modality
+          in: query
+          schema:
+            type: string
+            enum: [PRESENTIAL, ONLINE]
+      responses:
+        '200':
+          description: Lista de disciplinas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CourseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/courses/{id}:
+    get:
+      tags:
+        - Courses
+      summary: Buscar disciplina por ID
+      operationId: getCourse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dados da disciplina
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Courses
+      summary: Atualizar disciplina (completo)
+      operationId: updateCourse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseCreateRequest'
+      responses:
+        '200':
+          description: Disciplina atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags:
+        - Courses
+      summary: Atualizar disciplina (parcial)
+      operationId: partialUpdateCourse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseUpdateRequest'
+      responses:
+        '200':
+          description: Disciplina atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Courses
+      summary: Deletar disciplina
+      operationId: deleteCourse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Disciplina deletada
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/courses/{id}/materials:
+    post:
+      tags:
+        - Materials
+      summary: Adicionar material a uma disciplina
+      operationId: addMaterialToCourse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialCreateRequest'
+      responses:
+        '201':
+          description: Material adicionado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    get:
+      tags:
+        - Materials
+      summary: Listar materiais de uma disciplina
+      operationId: getMaterialsFromCourse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de materiais
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MaterialResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/courses/{id}/materials/{material_id}:
+    get:
+      tags:
+        - Materials
+      summary: Buscar material específico
+      operationId: getMaterialFromCourse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: material_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dados do material
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Materials
+      summary: Atualizar material (completo)
+      operationId: updateMaterialInCourse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: material_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialCreateRequest'
+      responses:
+        '200':
+          description: Material atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags:
+        - Materials
+      summary: Atualizar material (parcial)
+      operationId: partialUpdateMaterialInCourse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: material_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialUpdateRequest'
+      responses:
+        '200':
+          description: Material atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Materials
+      summary: Deletar material
+      operationId: deleteMaterialFromCourse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: material_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Material deletado
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/courses/{id}/classes:
+    get:
+      tags:
+        - Courses
+      summary: Buscar turmas de uma disciplina
+      operationId: getClassesFromCourse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: semester
+          in: query
+          schema:
+            type: integer
+        - name: year
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de turmas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    semester:
+                      type: integer
+                    year:
+                      type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Serviço está funcionando
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Requisição inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Não autorizado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    CourseCreateRequest:
+      type: object
+      required:
+        - name
+        - credits
+        - modality
+      properties:
+        name:
+          type: string
+          minLength: 3
+        credits:
+          type: integer
+          minimum: 0
+        modality:
+          type: string
+          enum: [PRESENTIAL, ONLINE]
+        description:
+          type: string
+
+    CourseUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+        credits:
+          type: integer
+          minimum: 0
+        modality:
+          type: string
+          enum: [PRESENTIAL, ONLINE]
+        description:
+          type: string
+
+    CourseResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        credits:
+          type: integer
+        modality:
+          type: string
+          enum: [PRESENTIAL, ONLINE]
+        description:
+          type: string
+        materials:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaterialResponse'
+        classes:
+          type: array
+          items:
+            type: string
+
+    MaterialCreateRequest:
+      type: object
+      required:
+        - name
+        - url
+      properties:
+        name:
+          type: string
+          minLength: 3
+        url:
+          type: string
+          format: uri
+
+    MaterialUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+        url:
+          type: string
+          format: uri
+
+    MaterialResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+

@@ -25,7 +25,10 @@ metrics.set_meter_provider(MeterProvider(resource=resource, metric_readers=[prom
 app = FastAPI(
     title="Courses API",
     description="API para gerenciar cursos, materiais e turmas.",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc",
+    openapi_url="/api/v1/openapi.json",
 )
 
 # Inclui o roteador de cursos
