@@ -6,8 +6,8 @@ import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 from httpx import ASGITransport
 
-from main import app
-from database import db, course_collection
+from src.main import app
+from src.database import db, course_collection
 
 # --- Configuração do Banco de Dados de Teste ---
 

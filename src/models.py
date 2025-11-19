@@ -4,6 +4,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, HttpUrl
 from bson import ObjectId
 
+
 # Helper para permitir que os modelos Pydantic trabalhem com o ObjectId do MongoDB
 # VERSÃO CORRIGIDA PARA Pydantic v2+
 class PyObjectId(ObjectId):
@@ -23,17 +24,21 @@ class PyObjectId(ObjectId):
         # em vez de modificar um argumento.
         return {"type": "string"}
 
+
 class Modality(str, Enum):
     PRESENTIAL = "PRESENTIAL"
     ONLINE = "ONLINE"
+
 
 # === Material Models ===
 class MaterialBase(BaseModel):
     name: str = Field(..., min_length=3)
     url: HttpUrl
 
+
 class Material(MaterialBase):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+
 
 class MaterialUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=3)
@@ -47,14 +52,17 @@ class CourseBase(BaseModel):
     modality: Modality
     description: Optional[str] = None
 
+
 class CourseCreate(CourseBase):
-    pass # Não há campos extras além dos que já estão em CourseBase
+    pass  # Não há campos extras além dos que já estão em CourseBase
+
 
 class CourseUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=3)
     credits: Optional[int] = Field(None, ge=0)
     modality: Optional[Modality] = None
     description: Optional[str] = None
+
 
 class CourseInDB(CourseBase):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
@@ -65,7 +73,8 @@ class CourseInDB(CourseBase):
         populate_by_name = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
-        
+
+
 # === DTO for External API ===
 class ClassDTO(BaseModel):
     id: str
