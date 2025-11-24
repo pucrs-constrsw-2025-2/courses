@@ -35,8 +35,8 @@ app = FastAPI(
     openapi_url="/api/v1/openapi.json",
 )
 
-# Inclui o roteador de cursos
-app.include_router(course_router, tags=["Courses"])
+# Inclui o roteador de cursos com prefixo /api/v1
+app.include_router(course_router, prefix="/api/v1", tags=["Courses"])
 
 # Instrumentar FastAPI e HTTPX com OpenTelemetry
 FastAPIInstrumentor.instrument_app(app)
@@ -49,7 +49,7 @@ async def read_root():
 
 
 # Endpoint de health check padronizado (formato compatível com Actuator)
-@app.get("/health")
+@app.get("/api/v1/health")
 async def health():
     """
     Health check endpoint padronizado.
@@ -67,7 +67,7 @@ async def health():
 
 
 # Endpoint para expor métricas Prometheus
-@app.get("/metrics")
+@app.get("/api/v1/metrics")
 async def metrics_endpoint():
     from prometheus_client import CONTENT_TYPE_LATEST
 
