@@ -71,7 +71,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /api/v1/courses/{id}:
+  /api/v1/courses/{courseId}:
     get:
       tags:
         - Courses
@@ -80,7 +80,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: courseId
           in: path
           required: true
           schema:
@@ -105,7 +105,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: courseId
           in: path
           required: true
           schema:
@@ -138,7 +138,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: courseId
           in: path
           required: true
           schema:
@@ -171,7 +171,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: courseId
           in: path
           required: true
           schema:
@@ -184,7 +184,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /api/v1/courses/{id}/materials:
+  /api/v1/courses/{courseId}/materials:
     post:
       tags:
         - Materials
@@ -193,7 +193,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: courseId
           in: path
           required: true
           schema:
@@ -226,7 +226,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: courseId
           in: path
           required: true
           schema:
@@ -249,7 +249,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /api/v1/courses/{id}/materials/{material_id}:
+  /api/v1/courses/{courseId}/materials/{materialId}:
     get:
       tags:
         - Materials
@@ -258,12 +258,12 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: courseId
           in: path
           required: true
           schema:
             type: string
-        - name: material_id
+        - name: materialId
           in: path
           required: true
           schema:
@@ -288,12 +288,12 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: courseId
           in: path
           required: true
           schema:
             type: string
-        - name: material_id
+        - name: materialId
           in: path
           required: true
           schema:
@@ -326,12 +326,12 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: courseId
           in: path
           required: true
           schema:
             type: string
-        - name: material_id
+        - name: materialId
           in: path
           required: true
           schema:
@@ -364,12 +364,12 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: courseId
           in: path
           required: true
           schema:
             type: string
-        - name: material_id
+        - name: materialId
           in: path
           required: true
           schema:
@@ -382,7 +382,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /api/v1/courses/{id}/classes:
+  /api/v1/courses/{courseId}/classes:
     get:
       tags:
         - Courses
@@ -391,7 +391,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - name: courseId
           in: path
           required: true
           schema:
@@ -427,7 +427,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /health:
+  /api/v1/health:
     get:
       tags:
         - Health
@@ -436,6 +436,20 @@ paths:
       responses:
         '200':
           description: Serviço está funcionando
+
+  /api/v1/metrics:
+    get:
+      tags:
+        - Metrics
+      summary: Métricas Prometheus
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Métricas em formato Prometheus
+          content:
+            text/plain:
+              schema:
+                type: string
 
 components:
   securitySchemes:
